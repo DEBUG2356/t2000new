@@ -27,7 +27,6 @@ export default function ClosureCalendar({ productId, slots, rules }: { productId
   }, []);
   const [view, setView] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
   const [closed, setClosed] = useState<Set<string>>(new Set());
-  const [sold, setSold] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<Set<string>>(new Set());
   const [selected, setSelected] = useState<string | null>(null);
@@ -39,7 +38,7 @@ export default function ClosureCalendar({ productId, slots, rules }: { productId
   const daysIn = new Date(view.getFullYear(), view.getMonth() + 1, 0).getDate();
   const days = Array.from({ length: daysIn }, (_, i) => new Date(view.getFullYear(), view.getMonth(), i + 1));
 
-  // one small query per visible month: closures + sold tickets of this product only
+  // one small query per visible month: the closures of this product only
   const load = useCallback(async () => {
     setLoading(true);
     const from = ymd(new Date(view.getFullYear(), view.getMonth(), 1));
@@ -47,12 +46,6 @@ export default function ClosureCalendar({ productId, slots, rules }: { productId
     try {
       const r = await loadCalendar(productId, from, to);
       setClosed(new Set(r.closures.map((c) => key(c.date, c.slot))));
-      const m = new Map<string, number>();
-      for (const s of r.sold) {
-        m.set(key(s.date, ""), (m.get(key(s.date, "")) || 0) + s.n);
-        if (s.slot) m.set(key(s.date, s.slot), (m.get(key(s.date, s.slot)) || 0) + s.n);
-      }
-      setSold(m);
     } catch {
       setError("A naptár betöltése nem sikerült.");
     }
@@ -163,7 +156,6 @@ export default function ClosureCalendar({ productId, slots, rules }: { productId
             const rule = ruleClosed(d, rules);
             const isClosed = closed.has(key(ds, ""));
             const partly = !isClosed && closedSlotsOf(ds) > 0;
-            const n = sold.get(key(ds, "")) || 0;
             const isSel = multi ? picked.has(ds) : selected === ds;
             const tone = past
               ? "bg-[#f4f4f4] text-[#bbb]"
@@ -199,7 +191,6 @@ export default function ClosureCalendar({ productId, slots, rules }: { productId
                 <span className="text-sm font-bold">{d.getDate()}</span>
                 <span className="text-[10px] leading-tight">
                   {isClosed ? "zárva" : rule && !past ? rule : partly ? `${closedSlotsOf(ds)} időpont zárva` : ""}
-                  {n > 0 && <span className="block font-semibold">🎟 {n}</span>}
                 </span>
               </button>
             );
@@ -219,7 +210,6 @@ export default function ClosureCalendar({ productId, slots, rules }: { productId
           <span className="flex items-center gap-1">
             <i className="inline-block size-3 rounded bg-[#e4e4e4]" /> általános szabály szerint zárva
           </span>
-          <span>🎟 = eladott jegyek</span>
         </div>
       </div>
 
@@ -245,7 +235,6 @@ export default function ClosureCalendar({ productId, slots, rules }: { productId
               {selected.replaceAll("-", ".")}. {WEEKDAY_LONG[sel.getDay()]}
             </div>
             {selRule && <p className="mt-1 rounded bg-[#f3f4f6] p-2 text-xs">Az általános szabály szerint zárva ({selRule}). Ezt fent, a Foglalhatóság résznél lehet módosítani.</p>}
-            {(sold.get(key(selected, "")) || 0) > 0 && <p className="mt-1 text-xs text-[#92400e]">Erre a napra már {sold.get(key(selected, ""))} jegy kelt el.</p>}
             <button
               type="button"
               disabled={busy.has(key(selected, ""))}
@@ -262,7 +251,6 @@ export default function ClosureCalendar({ productId, slots, rules }: { productId
                   {slots.map((s) => {
                     const k = key(selected, s);
                     const c = closed.has(k);
-                    const n = sold.get(k) || 0;
                     return (
                       <button
                         key={s}
@@ -273,7 +261,6 @@ export default function ClosureCalendar({ productId, slots, rules }: { productId
                         className={`rounded border px-1 py-1.5 text-sm ${c ? "border-[#fca5a5] bg-[#fee2e2] text-[#991b1b] line-through" : "border-[#bbf7d0] bg-[#f0fdf4] text-[#166534] hover:border-[#16a34a]"} disabled:opacity-50`}
                       >
                         {s}
-                        {n > 0 && <span className="block text-[10px] no-underline">🎟 {n}</span>}
                       </button>
                     );
                   })}

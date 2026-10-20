@@ -4,7 +4,7 @@ import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { CATEGORIES } from "@/data/shop";
 import { checkPassword, endSession, requireAdmin, startSession } from "@/lib/server/admin-auth";
-import { addClosure, CATALOG_TAG, deleteProduct, fetchClosures, fetchSlugIndex, fetchSold, removeClosure, updateOrders, upsertProduct, uploadImage } from "@/lib/server/db";
+import { addClosure, CATALOG_TAG, deleteProduct, fetchClosures, fetchSlugIndex, removeClosure, updateOrders, upsertProduct, uploadImage } from "@/lib/server/db";
 import { generateSlots, normTime } from "@/lib/slots";
 import { translateProduct } from "@/lib/translate-core";
 import type { Lang } from "@/lib/site";
@@ -164,15 +164,11 @@ export async function uploadProductImage(fd: FormData): Promise<{ url?: string; 
 // ------------------------------------------------------------ calendar (small targeted queries only)
 const isYmd = (d: string) => /^\d{4}-\d{2}-\d{2}$/.test(d);
 
-/** Closures + sold tickets of one product for the visible month */
+/** Closures of one product for the visible month (a single small query) */
 export async function loadCalendar(productId: number, from: string, to: string) {
   await requireAdmin();
-  if (!isYmd(from) || !isYmd(to)) return { closures: [], sold: [] };
-  const [closures, sold] = await Promise.all([fetchClosures(productId, from, to), fetchSold(productId, from, to)]);
-  return {
-    closures,
-    sold: sold.map((o) => ({ date: o.date, slot: o.time_slot || "", n: o.adult + o.senior + o.youth + o.child + o.infant })),
-  };
+  if (!isYmd(from) || !isYmd(to)) return { closures: [] };
+  return { closures: await fetchClosures(productId, from, to) };
 }
 
 /** Close or reopen one day (slot "") or one time slot – a single row insert/delete */

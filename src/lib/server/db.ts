@@ -204,14 +204,6 @@ export async function removeClosure(productId: number, date: string, slot: strin
   await rest(`closures?product_id=eq.${productId}&date=eq.${date}&slot=eq.${encodeURIComponent(slot)}`, { method: "DELETE", cache: "no-store" });
 }
 
-/** Tickets already sold per day/slot (paid + pending) – shown in the admin calendar */
-export async function fetchSold(productId: number, from: string, to: string) {
-  return rest<{ date: string; time_slot: string | null; adult: number; senior: number; youth: number; child: number; infant: number }[]>(
-    `orders?select=date,time_slot,adult,senior,youth,child,infant&product_id=eq.${productId}&date=gte.${from}&date=lte.${to}&status=in.(paid,pending)`,
-    { cache: "no-store" },
-  );
-}
-
 // ------------------------------------------------------------ storage
 export async function uploadImage(path: string, body: ArrayBuffer, contentType: string) {
   const res = await fetch(`${supabaseUrl()}/storage/v1/object/media/${path}`, {
