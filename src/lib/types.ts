@@ -89,4 +89,6 @@ export type Order = TicketCounts & {
   group_ref: string | null; // one purchase (all parts of a combo share it)
   combo_id: number | null;
   combo_name: string | null;
+  sent: boolean; // tickets sent to the customer
+  exported: boolean; // order transferred to Google Sheets
 };
