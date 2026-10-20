@@ -1,0 +1,183 @@
+@import "tailwindcss";
+
+/* Palette of the original tickets2000.com theme */
+@theme {
+  --color-lime: #b5e61d;
+  --color-lime-dark: #93bb15;
+  --color-lime-soft: #e3f5a7;
+  --color-slate: #464c5e;
+  --color-slate-deep: #3a3f4f;
+  --color-brand-red: #e01b1b;
+  --color-rose: #f6bbbb;
+  --color-paper: #efefef;
+  --color-ink: #333333;
+  --color-muted: #888888;
+  --color-star: #ffc700;
+  --color-star-soft: #fff9e4;
+  --color-review: #7d8fd4;
+
+  --font-sans: var(--font-open-sans), "Open Sans", sans-serif;
+  --font-display: var(--font-league-spartan), "League Spartan", sans-serif;
+  --font-poppins: var(--font-poppins), "Poppins", sans-serif;
+
+  --container-site: 1200px;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    background: #fff;
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection {
+    background: var(--color-lime);
+    color: #212529;
+  }
+}
+
+@layer components {
+  .container-site {
+    width: 100%;
+    max-width: var(--container-site);
+    margin-inline: auto;
+    padding-inline: 15px;
+  }
+
+  /* Rich text coming from the original CMS (product descriptions, legal pages) */
+  .rich {
+    font-family: var(--font-poppins);
+    line-height: 1.65;
+    color: var(--color-ink);
+  }
+  .rich h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 0 0 0.75rem;
+    line-height: 1.3;
+  }
+  .rich h3,
+  .rich h4,
+  .rich h5 {
+    font-weight: 600;
+    margin: 1rem 0 0.5rem;
+  }
+  .rich p {
+    margin: 0 0 0.9rem;
+  }
+  .rich ul,
+  .rich ol {
+    margin: 0 0 1rem;
+    padding-left: 1.6rem;
+  }
+  .rich ul {
+    list-style: disc;
+  }
+  .rich ol {
+    list-style: decimal;
+  }
+  .rich li {
+    margin-bottom: 0.35rem;
+  }
+  .rich a {
+    color: var(--color-brand-red);
+    text-decoration: underline;
+  }
+  .rich strong {
+    font-weight: 600;
+  }
+  .rich.two-col ul {
+    columns: 2;
+    column-gap: 3rem;
+  }
+  @media (max-width: 767px) {
+    .rich.two-col ul {
+      columns: 1;
+    }
+  }
+  .rich.legal {
+    font-family: var(--font-sans);
+    font-size: 0.95rem;
+  }
+  .rich.legal strong {
+    font-weight: 700;
+  }
+
+  .btn-lime {
+    background: var(--color-lime);
+    color: #212529;
+    border: 1px solid var(--color-lime);
+    border-radius: 0.3rem;
+    transition: background-color 0.15s, border-color 0.15s;
+  }
+  .btn-lime:hover {
+    background: #9cc716;
+    border-color: var(--color-lime-dark);
+  }
+  .btn-dark {
+    background: #333;
+    color: #fff;
+    border-radius: 0.3rem;
+    transition: background-color 0.15s;
+  }
+  .btn-dark:hover {
+    background: #1f1f1f;
+  }
+  .btn-outline-red {
+    color: var(--color-brand-red);
+    border: 1px solid var(--color-brand-red);
+    border-radius: 0.3rem;
+    transition: all 0.15s;
+  }
+  .btn-outline-red:hover {
+    background: var(--color-brand-red);
+    color: #fff;
+  }
+  .field {
+    width: 100%;
+    border: 1px solid #ced4da;
+    border-radius: 0.25rem;
+    padding: 0.55rem 0.75rem;
+    background: #fff;
+    font-size: 0.95rem;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .field:focus {
+    outline: none;
+    border-color: var(--color-lime);
+    box-shadow: 0 0 0 0.2rem rgba(181, 230, 29, 0.25);
+  }
+}
+
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Headline entrance: every word drops in from above (hero + category headers) */
+@keyframes drop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-0.7em);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.drop-word {
+  display: inline-block;
+  opacity: 0;
+  animation: drop-in 0.75s cubic-bezier(0.2, 0.75, 0.25, 1) forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .drop-word {
+    opacity: 1;
+    animation: none;
+  }
+}
