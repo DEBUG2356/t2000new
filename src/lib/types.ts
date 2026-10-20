@@ -9,7 +9,8 @@ export const emptyCounts = (): TicketCounts => ({ adult: 0, senior: 0, youth: 0,
 export type PropKey = "instant" | "mobile" | "flexible" | "fullDay" | "freeCancel" | "duration";
 export type Prop = { key: PropKey; n?: number };
 export type Label = { text: string; bg: string };
-export type Review = { stars: number; date: string; text: string };
+/** fromProduct: the review was written for another product (e.g. a combo) and is shown with that note */
+export type Review = { stars: number; date: string; text: string; fromProduct?: number };
 
 export type LangText = {
   title: string;

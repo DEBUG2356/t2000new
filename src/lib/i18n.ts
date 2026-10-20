@@ -76,6 +76,7 @@ const en = {
     location: "Location",
     cancellation: "Cancellation Policy",
     showMoreReviews: "Show more reviews",
+    reviewOf: "Review of the combo ticket: {name}",
   },
   share: { copy: "Copy link", copied: "Link copied", email: "E-mail" },
   search: {
@@ -241,6 +242,7 @@ const fr: Dict = {
     location: "Emplacement",
     cancellation: "Conditions d'annulation",
     showMoreReviews: "Afficher plus de commentaires",
+    reviewOf: "Avis sur le billet combiné : {name}",
   },
   share: { copy: "Copier le lien", copied: "Lien copié", email: "E-mail" },
   search: {
@@ -404,6 +406,7 @@ const es: Dict = {
     location: "Ubicación",
     cancellation: "Política de cancelación",
     showMoreReviews: "Mostrar más reseñas",
+    reviewOf: "Opinión sobre la entrada combinada: {name}",
   },
   share: { copy: "Copiar enlace", copied: "Enlace copiado", email: "E-mail" },
   search: {
@@ -567,6 +570,7 @@ const de: Dict = {
     location: "Standort",
     cancellation: "Stornierungsbedingungen",
     showMoreReviews: "Weitere Bewertungen anzeigen",
+    reviewOf: "Bewertung des Kombitickets: {name}",
   },
   share: { copy: "Link kopieren", copied: "Link kopiert", email: "E-Mail" },
   search: {
@@ -730,6 +734,7 @@ const sk: Dict = {
     location: "Poloha",
     cancellation: "Storno podmienky",
     showMoreReviews: "Zobraziť ďalšie recenzie",
+    reviewOf: "Recenzia kombinovanej vstupenky: {name}",
   },
   share: { copy: "Kopírovať odkaz", copied: "Odkaz skopírovaný", email: "E-mail" },
   search: {
@@ -893,6 +898,7 @@ const it: Dict = {
     location: "Posizione",
     cancellation: "Politica di cancellazione",
     showMoreReviews: "Mostra altre recensioni",
+    reviewOf: "Recensione del biglietto combinato: {name}",
   },
   share: { copy: "Copia link", copied: "Link copiato", email: "E-mail" },
   search: {

@@ -17,6 +17,7 @@ import {
   productPackage,
   productPrice,
   productText,
+  productTitle,
   productUrl,
   type Catalog,
   type Category,
@@ -174,7 +175,17 @@ export default function ProductView({ product: p, category, lang, catalog }: { p
           )}
 
           {p.rating && p.reviewCount ? (
-            <Reviews reviews={p.reviews} rating={p.rating} count={p.reviewCount} bars={p.bars} t={{ reviews: tp.reviews, reviewsCount: tp.reviewsCount, stars: tp.stars, showMore: tp.showMoreReviews }} />
+            <Reviews
+              // reviews taken over from another product (e.g. a combo) carry its name
+              reviews={p.reviews.map((r) => {
+                const from = r.fromProduct ? catalog.get(r.fromProduct) : undefined;
+                return { ...r, source: from ? productTitle(from, lang) : undefined };
+              })}
+              rating={p.rating}
+              count={p.reviewCount}
+              bars={p.bars}
+              t={{ reviews: tp.reviews, reviewsCount: tp.reviewsCount, stars: tp.stars, showMore: tp.showMoreReviews, reviewOf: tp.reviewOf }}
+            />
           ) : null}
         </div>
       </div>

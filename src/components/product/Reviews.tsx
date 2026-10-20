@@ -3,10 +3,10 @@
 import { useState } from "react";
 import Stars from "../Stars";
 
-type R = { stars: number; date: string; text: string };
+type R = { stars: number; date: string; text: string; source?: string };
 const PAGE = 6;
 
-export default function Reviews({ reviews, rating, count, bars, t }: { reviews: R[]; rating: number; count: number; bars: number[] | null; t: { reviews: string; reviewsCount: string; stars: string; showMore: string } }) {
+export default function Reviews({ reviews, rating, count, bars, t }: { reviews: R[]; rating: number; count: number; bars: number[] | null; t: { reviews: string; reviewsCount: string; stars: string; showMore: string; reviewOf: string } }) {
   const [shown, setShown] = useState(PAGE);
   const total = bars ? bars.reduce((a, b) => a + b, 0) : 0;
   return (
@@ -45,6 +45,7 @@ export default function Reviews({ reviews, rating, count, bars, t }: { reviews: 
                 <span>{r.date}</span>
               </div>
               <p className="mt-1.5 text-[15px] leading-relaxed">{r.text}</p>
+              {r.source && <p className="mt-1 text-xs text-muted italic">{t.reviewOf.replace("{name}", r.source)}</p>}
             </div>
           ))}
         </div>
