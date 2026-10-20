@@ -1,7 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { loadCalendar, setClosure, setClosures } from "@/app/admin/actions";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ymd } from "@/lib/availability";
 
 const MONTHS = ["Január", "Február", "Március", "Április", "Május", "Június", "Július", "Augusztus", "Szeptember", "Október", "November", "December"];
@@ -28,7 +27,6 @@ export default function ClosureCalendar({ productId, slots, rules }: { productId
   const [view, setView] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
   const [closed, setClosed] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState<Set<string>>(new Set());
   const [selected, setSelected] = useState<string | null>(null);
   const [multi, setMulti] = useState(false);
   const [picked, setPicked] = useState<Set<string>>(new Set());
@@ -44,7 +42,9 @@ export default function ClosureCalendar({ productId, slots, rules }: { productId
     const from = ymd(new Date(view.getFullYear(), view.getMonth(), 1));
     const to = ymd(new Date(view.getFullYear(), view.getMonth() + 1, 0));
     try {
-      const r = await loadCalendar(productId, from, to);
+      const res = await fetch(`/api/admin/closures?p=${productId}&from=${from}&to=${to}`, { cache: "no-store" });
+      if (!res.ok) throw new Error();
+      const r: { closures: { date: string; slot: string }[] } = await res.json();
       setClosed(new Set(r.closures.map((c) => key(c.date, c.slot))));
     } catch {
       setError("A naptár betöltése nem sikerült.");
@@ -57,53 +57,55 @@ export default function ClosureCalendar({ productId, slots, rules }: { productId
     load();
   }, [load]);
 
-  /** optimistic toggle of one day ("") or one slot – a single row on the server */
-  const toggle = async (date: string, slot: string) => {
-    const k = key(date, slot);
-    const willClose = !closed.has(k);
-    setError("");
-    setBusy((b) => new Set(b).add(k));
-    setClosed((c) => {
-      const n = new Set(c);
-      if (willClose) n.add(k);
-      else n.delete(k);
-      return n;
-    });
-    const r = await setClosure(productId, date, slot, willClose).catch(() => ({ ok: false }));
-    if (!r.ok) {
-      setError("Nem sikerült menteni, próbáld újra.");
-      setClosed((c) => {
-        const n = new Set(c);
-        if (willClose) n.delete(k);
-        else n.add(k);
-        return n;
+  // requests run in parallel; only requests for the same day/slot wait for each other (keeps their order)
+  const queue = useRef(new Map<string, Promise<unknown>>());
+  const send = (k: string, body: object) => {
+    const prev = queue.current.get(k) || Promise.resolve();
+    const next = prev
+      .catch(() => {})
+      .then(() => fetch("/api/admin/closures", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }))
+      .then((r) => {
+        if (!r.ok) throw new Error();
       });
-    }
-    setBusy((b) => {
-      const n = new Set(b);
-      n.delete(k);
-      return n;
-    });
+    queue.current.set(k, next);
+    return next;
   };
 
-  const bulk = async (close: boolean) => {
-    const dates = [...picked];
-    if (!dates.length) return;
-    setError("");
+  const flip = (keys: string[], close: boolean) =>
     setClosed((c) => {
       const n = new Set(c);
-      for (const d of dates) {
-        if (close) n.add(key(d, ""));
-        else n.delete(key(d, ""));
+      for (const k of keys) {
+        if (close) n.add(k);
+        else n.delete(k);
       }
       return n;
     });
-    const r = await setClosures(productId, dates, close).catch(() => ({ ok: false }));
-    if (!r.ok) {
+
+  /** optimistic toggle of one day ("") or one slot – saved immediately, a single row on the server */
+  const toggle = (date: string, slot: string) => {
+    const k = key(date, slot);
+    const willClose = !closed.has(k);
+    setError("");
+    flip([k], willClose);
+    send(k, { productId, dates: [date], slot, closed: willClose }).catch(() => {
+      setError("Nem sikerült menteni, próbáld újra.");
+      flip([k], !willClose);
+    });
+  };
+
+  const bulk = (close: boolean) => {
+    const dates = [...picked];
+    if (!dates.length) return;
+    setError("");
+    flip(
+      dates.map((d) => key(d, "")),
+      close,
+    );
+    setPicked(new Set());
+    send(`bulk:${dates.join(",")}`, { productId, dates, slot: "", closed: close }).catch(() => {
       setError("Nem sikerült menteni, a naptár újratöltődik.");
       load();
-    }
-    setPicked(new Set());
+    });
   };
 
   const sel = selected ? new Date(selected + "T12:00:00") : null;
@@ -183,10 +185,10 @@ export default function ClosureCalendar({ productId, slots, rules }: { productId
                 }}
                 onDoubleClick={() => {
                   // double click: close / reopen the whole day
-                  if (!multi && !busy.has(key(ds, ""))) toggle(ds, "");
+                  if (!multi) toggle(ds, "");
                 }}
                 title={multi ? undefined : "Kattintás: kijelölés · dupla kattintás: egész nap lezárása / megnyitása"}
-                className={`relative flex h-16 flex-col items-start justify-between rounded-md p-1.5 text-left transition ${tone} ${isSel ? "ring-2 ring-slate ring-offset-1" : ""} ${busy.has(key(ds, "")) ? "opacity-60" : ""} disabled:cursor-default`}
+                className={`relative flex h-16 flex-col items-start justify-between rounded-md p-1.5 text-left transition ${tone} ${isSel ? "ring-2 ring-slate ring-offset-1" : ""} disabled:cursor-default`}
               >
                 <span className="text-sm font-bold">{d.getDate()}</span>
                 <span className="text-[10px] leading-tight">
@@ -237,7 +239,6 @@ export default function ClosureCalendar({ productId, slots, rules }: { productId
             {selRule && <p className="mt-1 rounded bg-[#f3f4f6] p-2 text-xs">Az általános szabály szerint zárva ({selRule}). Ezt fent, a Foglalhatóság résznél lehet módosítani.</p>}
             <button
               type="button"
-              disabled={busy.has(key(selected, ""))}
               onClick={() => toggle(selected, "")}
               className={`mt-3 w-full rounded px-3 py-2.5 text-sm font-semibold text-white ${dayClosed ? "bg-[#16a34a] hover:bg-[#15803d]" : "bg-brand-red hover:bg-[#b91515]"} disabled:opacity-50`}
             >
@@ -255,7 +256,6 @@ export default function ClosureCalendar({ productId, slots, rules }: { productId
                       <button
                         key={s}
                         type="button"
-                        disabled={busy.has(k)}
                         onClick={() => toggle(selected, s)}
                         title={c ? "Zárva – kattints a megnyitáshoz" : "Nyitva – kattints a lezáráshoz"}
                         className={`rounded border px-1 py-1.5 text-sm ${c ? "border-[#fca5a5] bg-[#fee2e2] text-[#991b1b] line-through" : "border-[#bbf7d0] bg-[#f0fdf4] text-[#166534] hover:border-[#16a34a]"} disabled:opacity-50`}

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { firstBookable, isOpen, MAX_QTY, ymd, type OpenRules } from "@/lib/availability";
 import type { Dict } from "@/lib/i18n";
 import { emptyCounts, type Ticket, type TicketCounts } from "@/lib/types";
@@ -28,7 +28,12 @@ function Calendar({ rules, value, onPick, t, isClosed, onView }: { rules: OpenRu
   const today = useMemo(() => new Date(), []);
   const start = value || firstBookable(rules, today) || today;
   const [view, setView] = useState(new Date(start.getFullYear(), start.getMonth(), 1));
-  useEffect(() => onView(view), [view, onView]);
+  // load the closures once per visible month (the callback identity changes on every render)
+  const onViewRef = useRef(onView);
+  useEffect(() => {
+    onViewRef.current = onView;
+  });
+  useEffect(() => onViewRef.current(view), [view]);
   const first = (view.getDay() + 6) % 7; // Monday first
   const daysIn = new Date(view.getFullYear(), view.getMonth() + 1, 0).getDate();
   const cells: (Date | null)[] = [...Array(first).fill(null), ...Array.from({ length: daysIn }, (_, i) => new Date(view.getFullYear(), view.getMonth(), i + 1))];

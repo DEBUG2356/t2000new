@@ -4,7 +4,7 @@ import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { CATEGORIES } from "@/data/shop";
 import { checkPassword, endSession, requireAdmin, startSession } from "@/lib/server/admin-auth";
-import { addClosure, CATALOG_TAG, deleteProduct, fetchClosures, fetchSlugIndex, removeClosure, updateOrders, upsertProduct, uploadImage } from "@/lib/server/db";
+import { CATALOG_TAG, deleteProduct, fetchSlugIndex, updateOrders, upsertProduct, uploadImage } from "@/lib/server/db";
 import { generateSlots, normTime } from "@/lib/slots";
 import { translateProduct } from "@/lib/translate-core";
 import type { Lang } from "@/lib/site";
@@ -159,33 +159,6 @@ export async function uploadProductImage(fd: FormData): Promise<{ url?: string; 
   } catch (e) {
     return { error: (e as Error).message };
   }
-}
-
-// ------------------------------------------------------------ calendar (small targeted queries only)
-const isYmd = (d: string) => /^\d{4}-\d{2}-\d{2}$/.test(d);
-
-/** Closures of one product for the visible month (a single small query) */
-export async function loadCalendar(productId: number, from: string, to: string) {
-  await requireAdmin();
-  if (!isYmd(from) || !isYmd(to)) return { closures: [] };
-  return { closures: await fetchClosures(productId, from, to) };
-}
-
-/** Close or reopen one day (slot "") or one time slot – a single row insert/delete */
-export async function setClosure(productId: number, date: string, slot: string, closed: boolean) {
-  await requireAdmin();
-  if (!isYmd(date) || (slot && !/^\d{2}:\d{2}$/.test(slot))) return { ok: false };
-  if (closed) await addClosure(productId, date, slot);
-  else await removeClosure(productId, date, slot);
-  return { ok: true };
-}
-
-/** Close / reopen several days at once (e.g. a whole week) */
-export async function setClosures(productId: number, dates: string[], closed: boolean) {
-  await requireAdmin();
-  const list = dates.filter(isYmd).slice(0, 62);
-  await Promise.all(list.map((d) => (closed ? addClosure(productId, d, "") : removeClosure(productId, d, ""))));
-  return { ok: true };
 }
 
 /** "Újrafordítás angolból": overwrites the texts of the given languages from English (not saved yet) */

@@ -137,11 +137,12 @@ export async function fetchProductFresh(id: number): Promise<Product | null> {
 /** Light product list for the admin table: only the columns it shows, no long texts */
 export type ProductSummary = Pick<Product, "id" | "active" | "sort" | "categories" | "image" | "tickets" | "components"> & { title: string; slug: string; langs: string[]; cover: string | null };
 export async function fetchProductSummaries(): Promise<ProductSummary[]> {
-  const rows = await rest<
+  const rowsP = rest<
     { id: number; active: boolean; sort: number; categories: string[]; image: string | null; cover: string | null; tickets: Product["tickets"]; components: number[]; title: string | null; card: string | null; slug: string | null }[]
   >("products?select=id,active,sort,categories,image,cover:gallery->>0,tickets,components,title:i18n->en->>title,card:i18n->en->>cardTitle,slug:i18n->en->>slug&order=sort.asc,id.asc", { cache: "no-store" });
-  // the language list comes from a cheap second query on the keys only
-  const keys = await rest<{ id: number; k: string[] }[]>("rpc/product_langs", { method: "POST", body: "{}", cache: "no-store" }).catch(() => []);
+  // the language list comes from a cheap second query on the keys only (both run at the same time)
+  const keysP = rest<{ id: number; k: string[] }[]>("rpc/product_langs", { method: "POST", body: "{}", cache: "no-store" }).catch(() => []);
+  const [rows, keys] = await Promise.all([rowsP, keysP]);
   const langMap = new Map(keys.map((r) => [r.id, r.k]));
   return rows.map((r) => ({
     id: r.id,
@@ -162,6 +163,11 @@ export async function fetchProductSummaries(): Promise<ProductSummary[]> {
 export async function fetchSlugIndex() {
   const cols = ["en", "fr", "es", "de", "sk", "it"].map((l) => `${l}:i18n->${l}->>slug`).join(",");
   return rest<({ id: number; categories: string[]; components: number[] } & Record<string, string | null>)[]>(`products?select=id,categories,components,${cols}`, { cache: "no-store" });
+}
+
+/** Updates only the given columns of one product */
+export async function patchProduct(id: number, cols: Record<string, unknown>) {
+  await rest(`products?id=eq.${id}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ ...cols, updated_at: new Date().toISOString() }), cache: "no-store" });
 }
 
 export async function upsertProduct(p: Product) {

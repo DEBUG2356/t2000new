@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition, type ReactNode } from "react";
+import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { removeProduct, retranslate, saveProduct, uploadProductImage } from "@/app/admin/actions";
 import { LANGS, LANG_LABEL, type Lang } from "@/lib/site";
 import { generateSlots } from "@/lib/slots";
@@ -20,10 +20,13 @@ const PROPS: { key: PropKey; label: string }[] = [
 const WEEKDAYS = ["V", "H", "K", "Sze", "Cs", "P", "Szo"];
 const MONTHS = ["Jan", "Feb", "Már", "Ápr", "Máj", "Jún", "Júl", "Aug", "Szep", "Okt", "Nov", "Dec"];
 
-function Card({ title, children, hint }: { title: string; children: ReactNode; hint?: string }) {
+function Card({ title, children, hint, badge }: { title: string; children: ReactNode; hint?: string; badge?: ReactNode }) {
   return (
     <section className="rounded-lg bg-white p-5 shadow-sm">
-      <h2 className="text-lg font-bold">{title}</h2>
+      <h2 className="flex items-center gap-3 text-lg font-bold">
+        {title}
+        {badge}
+      </h2>
       {hint && <p className="mt-0.5 text-sm text-muted">{hint}</p>}
       <div className="mt-4">{children}</div>
     </section>
@@ -148,7 +151,39 @@ export default function ProductEditor({
     setTranslating(false);
   };
   const slots = generateSlots(p.slotFrom, p.slotTo, p.slotStep ?? 30);
-  const slotsChanged = slots.join() !== initial.timeSlots.join();
+
+  // booking rules are saved on their own, right after a change (no "Mentés" needed)
+  const rulesJson = JSON.stringify({
+    closedWeekdays: p.closedWeekdays,
+    closedDates: p.closedDates,
+    months: p.months,
+    minQty: p.minQty,
+    slotFrom: p.slotFrom,
+    slotTo: p.slotTo,
+    slotStep: p.slotStep ?? 30,
+  });
+  const savedRules = useRef(rulesJson);
+  const [rulesState, setRulesState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  useEffect(() => {
+    if (isNew || rulesJson === savedRules.current) return;
+    const timer = setTimeout(async () => {
+      setRulesState("saving");
+      const res = await fetch("/api/admin/availability", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: p.id, ...JSON.parse(rulesJson) }) }).catch(() => null);
+      if (res?.ok) {
+        savedRules.current = rulesJson;
+        setRulesState("saved");
+      } else setRulesState("error");
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [rulesJson, isNew, p.id]);
+  const rulesBadge =
+    isNew ? null : rulesState === "saving" ? (
+      <span className="text-xs font-normal text-muted">mentés…</span>
+    ) : rulesState === "saved" ? (
+      <span className="text-xs font-normal text-[#166534]">✓ Mentve</span>
+    ) : rulesState === "error" ? (
+      <span className="text-xs font-normal text-brand-red">Nem sikerült menteni</span>
+    ) : null;
 
   return (
     <div className="pb-24">
@@ -167,7 +202,6 @@ export default function ProductEditor({
             title="Naptár – lezárások"
             hint="Dupla kattintás egy napra: egész nap lezárása / megnyitása. Egy kattintással kijelölöd a napot, és jobb oldalt egyes időpontokat is lezárhatsz. Minden azonnal mentődik."
           >
-            {slotsChanged && <p className="mb-3 rounded bg-[#fef9c3] p-2 text-xs text-[#854d0e]">Az időpontok megváltoztak – a weboldalon a Mentés után lépnek életbe.</p>}
             <ClosureCalendar productId={p.id} slots={slots} rules={{ closedWeekdays: p.closedWeekdays, closedDates: p.closedDates, months: p.months }} />
           </Card>
         </div>
@@ -346,13 +380,13 @@ export default function ProductEditor({
           </Card>
 
           {isCombo ? (
-            <Card title="Foglalhatóság" hint="Kombó: a napokat, időpontokat és lezárásokat az alap jegyek beállításai adják – ott kell módosítani őket.">
+            <Card title="Foglalhatóság" badge={rulesBadge} hint="Kombó: a napokat, időpontokat és lezárásokat az alap jegyek beállításai adják – ott kell módosítani őket. A változás azonnal mentődik.">
               <Field label="Minimum jegyszám / rendelés">
                 <input type="number" min={1} value={p.minQty} onChange={(e) => set("minQty", Number(e.target.value))} className="field mt-1 w-40" />
               </Field>
             </Card>
           ) : (
-          <Card title="Foglalhatóság">
+          <Card title="Foglalhatóság" badge={rulesBadge} hint={isNew ? undefined : "Minden változás azonnal mentődik, a Mentés gomb ehhez nem kell."}>
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label="Minimum jegyszám / rendelés">
                   <input type="number" min={1} value={p.minQty} onChange={(e) => set("minQty", Number(e.target.value))} className="field mt-1" />

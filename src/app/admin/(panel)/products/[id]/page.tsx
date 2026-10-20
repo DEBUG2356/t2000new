@@ -37,12 +37,10 @@ const blank = (): Product => ({
 
 export default async function EditProductPage({ params }: PageProps<"/admin/products/[id]">) {
   const { id } = await params;
-  let product: Product | undefined;
-  if (id === "new") product = blank();
-  else product = (await fetchProductFresh(Number(id) || 0)) ?? undefined;
+  // the product and the light list (titles only, for choosing combo base tickets) load at the same time
+  const [found, list] = await Promise.all([id === "new" ? Promise.resolve(blank()) : fetchProductFresh(Number(id) || 0), fetchProductSummaries()]);
+  const product: Product | undefined = found ?? undefined;
   if (!product) notFound();
-  // light list (titles only) for choosing the base tickets of a combo
-  const list = await fetchProductSummaries();
   return (
     <ProductEditor
       initial={product}
